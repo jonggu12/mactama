@@ -20,7 +20,7 @@ enum TendencySignalDeriver {
             signals.append(TendencySignal(type: .lateNight, timestamp: timestamp))
         }
 
-        if snapshot.cpuHotMinutes >= 10 {
+        if snapshot.cpuHotHits > 0 {
             signals.append(TendencySignal(type: .cpuHot, timestamp: timestamp))
         }
 

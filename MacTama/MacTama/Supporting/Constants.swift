@@ -8,6 +8,10 @@ enum Constants {
     static let powerPollInterval: TimeInterval = 5
     static let rhythmTickInterval: TimeInterval = 60
     static let eventDeduplicationWindow: TimeInterval = 2
+    static let chargingReconnectDebounceWindow: TimeInterval = 30
+    static let cpuPollInterval: TimeInterval = 30
+    static let cpuHotThresholdPercent = 70.0
+    static let cpuHotSustainedDuration: TimeInterval = 300
     static let lowBatteryThreshold = 20
     static let criticalBatteryThreshold = 10
     static let tendencyAnalysisWindowDays = 3

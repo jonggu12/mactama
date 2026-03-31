@@ -13,7 +13,7 @@ struct BehaviorDaySnapshot: Codable, Equatable, Identifiable {
     var earlyChargeCount: Int
     var lowBatteryHits: Int
     var criticalBatteryHits: Int
-    var cpuHotMinutes: Int
+    var cpuHotHits: Int
     var irregularityHits: Int
     var slapCount: Int
 
@@ -29,7 +29,7 @@ struct BehaviorDaySnapshot: Codable, Equatable, Identifiable {
         self.earlyChargeCount = 0
         self.lowBatteryHits = 0
         self.criticalBatteryHits = 0
-        self.cpuHotMinutes = 0
+        self.cpuHotHits = 0
         self.irregularityHits = 0
         self.slapCount = 0
     }

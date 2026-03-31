@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             store: UserDefaultsPetStateStore(),
             behaviorHistoryStore: UserDefaultsBehaviorHistoryStore(),
             powerMonitor: PowerMonitor(),
+            cpuLoadMonitor: CPULoadMonitor(),
             sleepWakeMonitor: SleepWakeMonitor()
         )
         let popoverController = PopoverController(appEnvironment: environment)

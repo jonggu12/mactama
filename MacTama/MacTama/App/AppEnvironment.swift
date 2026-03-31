@@ -10,6 +10,7 @@ final class AppEnvironment: ObservableObject {
     private let store: UserDefaultsPetStateStore
     private let behaviorHistoryStore: UserDefaultsBehaviorHistoryStore
     private let powerMonitor: PowerMonitor
+    private let cpuLoadMonitor: CPULoadMonitor
     private let sleepWakeMonitor: SleepWakeMonitor
     private var rhythmTimer: Timer?
 
@@ -17,11 +18,13 @@ final class AppEnvironment: ObservableObject {
         store: UserDefaultsPetStateStore,
         behaviorHistoryStore: UserDefaultsBehaviorHistoryStore,
         powerMonitor: PowerMonitor,
+        cpuLoadMonitor: CPULoadMonitor,
         sleepWakeMonitor: SleepWakeMonitor
     ) {
         self.store = store
         self.behaviorHistoryStore = behaviorHistoryStore
         self.powerMonitor = powerMonitor
+        self.cpuLoadMonitor = cpuLoadMonitor
         self.sleepWakeMonitor = sleepWakeMonitor
         self.petState = store.load() ?? .initial
         self.behaviorHistory = behaviorHistoryStore.load() ?? .initial()
@@ -34,6 +37,12 @@ final class AppEnvironment: ObservableObject {
         startRhythmTimer()
 
         powerMonitor.start { [weak self] snapshot in
+            Task { @MainActor in
+                self?.apply(snapshot: snapshot)
+            }
+        }
+
+        cpuLoadMonitor.start { [weak self] snapshot in
             Task { @MainActor in
                 self?.apply(snapshot: snapshot)
             }
@@ -57,6 +66,7 @@ final class AppEnvironment: ObservableObject {
         rhythmTimer?.invalidate()
         rhythmTimer = nil
         powerMonitor.stop()
+        cpuLoadMonitor.stop()
         sleepWakeMonitor.stop()
         persist()
     }
@@ -65,8 +75,11 @@ final class AppEnvironment: ObservableObject {
         let day = behaviorHistory.currentDay
         return [
             "오늘 버킷: \(day.id)",
-            "충전 \(day.chargingSessions)회 · 저배터리 \(day.lowBatteryHits)회",
-            "최근 일수 \(behaviorHistory.recentDays.count) · 신호 \(behaviorHistory.signalLog.count)개"
+            "awake \(day.totalAwakeMinutes)분 · sleep \(day.totalSleepMinutes)분",
+            "daytime \(day.daytimeUsageMinutes)분 · lateNight \(day.lateNightUsageMinutes)분",
+            "충전 \(day.chargingSessions)회 · 저배터리 \(day.lowBatteryHits)회 · CPU hot \(day.cpuHotHits)회",
+            "최근 일수 \(behaviorHistory.recentDays.count) · 신호 \(behaviorHistory.signalLog.count)개",
+            "충전 재연결 기준 \(Int(Constants.chargingReconnectDebounceWindow))초 · CPU \(Int(Constants.cpuHotThresholdPercent))%/\(Int(Constants.cpuHotSustainedDuration / 60))분"
         ]
     }
 
@@ -87,7 +100,7 @@ final class AppEnvironment: ObservableObject {
         } else {
             behaviorHistory = .initial(now: now)
         }
-        behaviorHistory.rollCurrentDayIfNeeded(now: now)
+        finalizeBehaviorDayIfNeeded(now: now)
         behaviorHistory.pruneOldSignals(now: now)
         persist()
     }
@@ -105,11 +118,17 @@ final class AppEnvironment: ObservableObject {
     }
 
     private func handle(_ event: PetEvent) {
-        behaviorHistory.rollCurrentDayIfNeeded(now: Date())
+        let now = Date()
+        finalizeBehaviorDayIfNeeded(now: now)
 
         switch event {
         case .chargingStarted:
-            behaviorHistory.recordChargingSession(batteryPercentage: petState.batteryPercentage)
+            _ = behaviorHistory.recordChargingSession(
+                batteryPercentage: petState.batteryPercentage,
+                now: now
+            )
+        case .chargingStopped:
+            behaviorHistory.recordChargingStopped(at: now)
         case .lowBatteryDetected:
             behaviorHistory.recordLowBatteryHit(batteryPercentage: petState.batteryPercentage)
         default:
@@ -148,6 +167,12 @@ final class AppEnvironment: ObservableObject {
         persist()
     }
 
+    private func apply(snapshot: CPULoadSnapshot) {
+        behaviorHistory.recordCPULoadSample(isHot: snapshot.isHot, interval: snapshot.sampleInterval)
+        behaviorHistory.lastUpdatedAt = Date()
+        persist()
+    }
+
     private func startRhythmTimer() {
         let timer = Timer.scheduledTimer(
             timeInterval: Constants.rhythmTickInterval,
@@ -167,11 +192,40 @@ final class AppEnvironment: ObservableObject {
 
     private func advanceRhythm() {
         let now = Date()
-        let elapsed = now.timeIntervalSince(petState.lastUpdatedAt)
+        let previousUpdatedAt = petState.lastUpdatedAt
+        let elapsed = now.timeIntervalSince(previousUpdatedAt)
+
+        recordBehaviorElapsed(from: previousUpdatedAt, to: now, displayMode: petState.displayMode)
+
         petState = PetStateReducer.applyElapsedTime(to: petState, elapsed: elapsed)
         petState.lastUpdatedAt = now
         PetStateReducer.refreshDisplayMode(&petState)
         persist()
+    }
+
+    private func finalizeBehaviorDayIfNeeded(now: Date) {
+        guard let finishedDay = behaviorHistory.rollCurrentDayIfNeeded(now: now) else {
+            return
+        }
+
+        let signals = TendencySignalDeriver.deriveSignals(from: finishedDay, timestamp: now)
+        behaviorHistory.appendSignals(signals)
+    }
+
+    private func recordBehaviorElapsed(from start: Date, to end: Date, displayMode: PetDisplayMode) {
+        guard end > start else { return }
+
+        let elapsedMinutes = max(1, Int(ceil(end.timeIntervalSince(start) / 60)))
+        var cursor = start
+
+        for _ in 0..<elapsedMinutes {
+            finalizeBehaviorDayIfNeeded(now: cursor)
+            behaviorHistory.recordUsageMinute(at: cursor, displayMode: displayMode)
+            cursor = cursor.addingTimeInterval(60)
+        }
+
+        finalizeBehaviorDayIfNeeded(now: end)
+        behaviorHistory.lastUpdatedAt = end
     }
 
 #if DEBUG
