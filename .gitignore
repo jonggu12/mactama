@@ -1,0 +1,7 @@
+.DS_Store
+MacTama/.DS_Store
+DerivedData/
+.build/
+MacTama1/
+xcuserdata/
+*.xcuserstate
