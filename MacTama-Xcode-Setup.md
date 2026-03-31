@@ -228,7 +228,7 @@ MacTama/
 
 ### `Features/Popover/PopoverView.swift`
 
-- 현재 상태와 최근 이벤트 표시
+- 현재 상태, 짧은 상태 설명, 최근 이벤트 표시
 
 ---
 
@@ -262,6 +262,7 @@ PowerMonitor / SleepWakeMonitor
 - 픽셀아트 애니메이션 엔진
 - CPU 감지
 - 공유 기능
+- 숫자형 상태 HUD
 
 이건 `Phase 0`에선 과하다.
 

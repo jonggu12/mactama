@@ -10,6 +10,7 @@ final class AppEnvironment: ObservableObject {
     private let powerMonitor: PowerMonitor
     private let sleepWakeMonitor: SleepWakeMonitor
     private var wakeResetTask: Task<Void, Never>?
+    private var rhythmTimer: Timer?
 
     init(
         store: UserDefaultsPetStateStore,
@@ -24,12 +25,13 @@ final class AppEnvironment: ObservableObject {
 
     func start() {
         restore()
-        syncCurrentPowerState()
+        syncCurrentPowerSnapshot()
         handle(.appLaunched)
+        startRhythmTimer()
 
-        powerMonitor.start { [weak self] isCharging in
+        powerMonitor.start { [weak self] snapshot in
             Task { @MainActor in
-                self?.handle(isCharging ? .chargingStarted : .chargingStopped)
+                self?.apply(snapshot: snapshot)
             }
         }
 
@@ -49,6 +51,8 @@ final class AppEnvironment: ObservableObject {
 
     func stop() {
         wakeResetTask?.cancel()
+        rhythmTimer?.invalidate()
+        rhythmTimer = nil
         powerMonitor.stop()
         sleepWakeMonitor.stop()
         persist()
@@ -56,23 +60,26 @@ final class AppEnvironment: ObservableObject {
 
     private func restore() {
         if let storedState = store.load() {
-            petState = storedState
+            let now = Date()
+            let elapsed = now.timeIntervalSince(storedState.lastUpdatedAt)
+            petState = PetStateReducer.applyElapsedTime(to: storedState, elapsed: elapsed)
+            petState.lastUpdatedAt = now
         } else {
             petState = .initial
+            petState.lastUpdatedAt = Date()
         }
-
-        petState.lastUpdatedAt = Date()
         persist()
     }
 
-    private func syncCurrentPowerState() {
-        let isCharging = powerMonitor.currentPowerState()
-        petState.isCharging = isCharging
-
-        if petState.displayMode != .sleeping {
-            petState.displayMode = isCharging ? .charging : .awake
+    private func syncCurrentPowerSnapshot() {
+        let snapshot = powerMonitor.currentSnapshot()
+        petState.isCharging = snapshot.isCharging
+        petState.isLowBattery = snapshot.isLowBattery
+        petState.batteryPercentage = snapshot.batteryPercentage
+        if petState.displayMode == .sleeping {
+            petState.displayMode = .awake
         }
-
+        PetStateReducer.refreshDisplayMode(&petState)
         persist()
     }
 
@@ -90,6 +97,54 @@ final class AppEnvironment: ObservableObject {
         store.save(petState)
     }
 
+    private func apply(snapshot: PowerSnapshot) {
+        let previousCharging = petState.isCharging
+        let previousLowBattery = petState.isLowBattery
+
+        petState.isCharging = snapshot.isCharging
+        petState.isLowBattery = snapshot.isLowBattery
+        petState.batteryPercentage = snapshot.batteryPercentage
+
+        if previousCharging != snapshot.isCharging {
+            handle(snapshot.isCharging ? .chargingStarted : .chargingStopped)
+            return
+        }
+
+        if previousLowBattery != snapshot.isLowBattery {
+            handle(snapshot.isLowBattery ? .lowBatteryDetected : .batteryRecovered)
+            return
+        }
+
+        PetStateReducer.refreshDisplayMode(&petState)
+        persist()
+    }
+
+    private func startRhythmTimer() {
+        let timer = Timer.scheduledTimer(
+            timeInterval: Constants.rhythmTickInterval,
+            target: self,
+            selector: #selector(handleRhythmTick),
+            userInfo: nil,
+            repeats: true
+        )
+        RunLoop.main.add(timer, forMode: .common)
+        rhythmTimer = timer
+    }
+
+    @objc
+    private func handleRhythmTick() {
+        advanceRhythm()
+    }
+
+    private func advanceRhythm() {
+        let now = Date()
+        let elapsed = now.timeIntervalSince(petState.lastUpdatedAt)
+        petState = PetStateReducer.applyElapsedTime(to: petState, elapsed: elapsed)
+        petState.lastUpdatedAt = now
+        PetStateReducer.refreshDisplayMode(&petState)
+        persist()
+    }
+
     private func scheduleWakeReset() {
         wakeResetTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(Constants.wakeDisplayDuration))
@@ -99,6 +154,7 @@ final class AppEnvironment: ObservableObject {
                 guard let self, self.petState.displayMode == .waking else { return }
                 self.petState.displayMode = self.petState.isCharging ? .charging : .awake
                 self.petState.lastUpdatedAt = Date()
+                PetStateReducer.refreshDisplayMode(&self.petState)
                 self.persist()
             }
         }

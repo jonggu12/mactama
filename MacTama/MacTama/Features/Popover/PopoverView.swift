@@ -24,6 +24,14 @@ struct PopoverView: View {
                 }
             }
 
+            Text(state.stateDescription)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+
+            Text(state.rhythmSummaryText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
             Group {
                 if let latestEvent = state.mostRecentEvent {
                     VStack(alignment: .leading, spacing: 2) {
@@ -67,6 +75,17 @@ struct PopoverView: View {
                     }
                     .font(.caption)
                 }
+            }
+
+            Divider()
+
+            HStack {
+                Text("현재 성향")
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                Text(state.traitStatusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
