@@ -88,6 +88,36 @@ struct PopoverView: View {
                     .foregroundStyle(.secondary)
             }
 
+#if DEBUG
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("디버그 테스트")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                HStack {
+                    Button("저배터리") {
+                        appEnvironment.debugSimulateLowBattery()
+                    }
+                    Button("배터리 회복") {
+                        appEnvironment.debugRecoverBattery()
+                    }
+                }
+                .buttonStyle(.bordered)
+
+                HStack {
+                    Button("Critical") {
+                        appEnvironment.debugForceCriticalFatigue()
+                    }
+                    Button("리셋") {
+                        appEnvironment.debugResetRhythm()
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+#endif
+
             Spacer()
         }
         .padding(16)

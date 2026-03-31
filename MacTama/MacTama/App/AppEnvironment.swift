@@ -159,4 +159,40 @@ final class AppEnvironment: ObservableObject {
             }
         }
     }
+
+#if DEBUG
+    func debugSimulateLowBattery() {
+        petState.isCharging = false
+        petState.isLowBattery = true
+        petState.batteryPercentage = 12
+        handle(.lowBatteryDetected)
+    }
+
+    func debugRecoverBattery() {
+        petState.isLowBattery = false
+        petState.batteryPercentage = 55
+        handle(.batteryRecovered)
+    }
+
+    func debugForceCriticalFatigue() {
+        petState.isCharging = false
+        petState.isLowBattery = false
+        petState.batteryPercentage = 38
+        petState.rhythm.energy = 10
+        petState.rhythm.fatigue = 95
+        petState.rhythm.mood = 28
+        PetStateReducer.refreshDisplayMode(&petState)
+        petState.lastUpdatedAt = Date()
+        persist()
+    }
+
+    func debugResetRhythm() {
+        petState.isLowBattery = false
+        petState.batteryPercentage = petState.isCharging ? 100 : 72
+        petState.rhythm = .initial
+        PetStateReducer.refreshDisplayMode(&petState)
+        petState.lastUpdatedAt = Date()
+        persist()
+    }
+#endif
 }
