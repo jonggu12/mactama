@@ -45,11 +45,15 @@ struct PetState: Codable {
 
 extension PetState {
     var menuBarTitle: String {
+        if isCharging {
+            return "🔌😺"
+        }
+
         switch displayMode {
         case .awake:
             return "😺"
         case .charging:
-            return "⚡😺"
+            return "🔌😺"
         case .lowEnergy:
             return "🪫😺"
         case .critical:
@@ -81,6 +85,9 @@ extension PetState {
     var powerDescription: String {
         switch displayMode {
         case .charging:
+            if let batteryPercentage, batteryPercentage <= Constants.lowBatteryThreshold {
+                return "전원 연결됨 · 배터리 회복 중"
+            }
             return "전원 연결됨"
         case .lowEnergy:
             return "배터리로 버티는 중"

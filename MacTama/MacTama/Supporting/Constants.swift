@@ -8,6 +8,7 @@ enum Constants {
     static let rhythmTickInterval: TimeInterval = 60
     static let eventDeduplicationWindow: TimeInterval = 2
     static let wakeDisplayDuration: TimeInterval = 1
-    static let lowBatteryThreshold = 15
-    static let popoverSize = CGSize(width: 240, height: 220)
+    static let lowBatteryThreshold = 20
+    static let criticalBatteryThreshold = 10
+    static let popoverSize = CGSize(width: 280, height: 460)
 }

@@ -6,121 +6,95 @@ struct PopoverView: View {
     var body: some View {
         let state = appEnvironment.petState
 
-        return VStack(alignment: .leading, spacing: 14) {
-            Text("MacTama")
-                .font(.headline)
+        return ScrollView(.vertical, showsIndicators: true) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    Text(state.menuBarTitle)
+                        .font(.system(size: 34))
+                        .frame(width: 44, height: 44)
 
-            HStack(spacing: 12) {
-                Text(state.menuBarTitle)
-                    .font(.system(size: 34))
-                    .frame(width: 44, height: 44)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(state.statusLabel)
-                        .font(.title3.weight(.semibold))
-                    Text(state.powerDescription)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Text(state.stateDescription)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-
-            Text(state.rhythmSummaryText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Group {
-                if let latestEvent = state.mostRecentEvent {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(latestEvent.event.title)
-                            .font(.caption.weight(.semibold))
-                        Text(latestEvent.event.detail)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(state.statusLabel)
+                            .font(.title3.weight(.semibold))
                     }
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.secondary.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+
+                Text(state.stateDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+
+                Divider()
+
+                Text("최근 이벤트")
+                    .font(.subheadline.weight(.semibold))
+
+                if state.recentEvents.isEmpty {
+                    Text("최근 이벤트가 쌓이면 여기에 보여요.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 } else {
-                    Text("아직 기록된 이벤트가 없어요.")
+                    ForEach(state.recentEvents) { entry in
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entry.event.title)
+                                Text(entry.event.detail)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(entry.occurredAt, style: .time)
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.caption)
+                    }
+                }
+
+                Divider()
+
+                HStack {
+                    Text("현재 성향")
+                        .font(.caption.weight(.semibold))
+                    Spacer()
+                    Text(state.traitStatusText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-            }
-
-            Divider()
-
-            Text("최근 이벤트")
-                .font(.subheadline.weight(.semibold))
-
-            if state.recentEvents.isEmpty {
-                Text("최근 이벤트가 쌓이면 여기에 보여요.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(state.recentEvents) { entry in
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(entry.event.title)
-                            Text(entry.event.detail)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Text(entry.occurredAt, style: .time)
-                            .foregroundStyle(.secondary)
-                    }
-                    .font(.caption)
-                }
-            }
-
-            Divider()
-
-            HStack {
-                Text("현재 성향")
-                    .font(.caption.weight(.semibold))
-                Spacer()
-                Text(state.traitStatusText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
 
 #if DEBUG
-            Divider()
+                Divider()
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("디버그 테스트")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("디버그 테스트")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-                HStack {
-                    Button("저배터리") {
-                        appEnvironment.debugSimulateLowBattery()
+                    HStack {
+                        Button("저배터리") {
+                            appEnvironment.debugSimulateLowBattery()
+                        }
+                        Button("배터리 회복") {
+                            appEnvironment.debugRecoverBattery()
+                        }
                     }
-                    Button("배터리 회복") {
-                        appEnvironment.debugRecoverBattery()
+                    .buttonStyle(.bordered)
+
+                    HStack {
+                        Button("Critical") {
+                            appEnvironment.debugForceCriticalFatigue()
+                        }
+                        Button("리셋") {
+                            appEnvironment.debugResetRhythm()
+                        }
                     }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
-
-                HStack {
-                    Button("Critical") {
-                        appEnvironment.debugForceCriticalFatigue()
-                    }
-                    Button("리셋") {
-                        appEnvironment.debugResetRhythm()
-                    }
-                }
-                .buttonStyle(.bordered)
-            }
 #endif
 
-            Spacer()
+                Spacer(minLength: 4)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(16)
+        .scrollIndicators(.visible)
         .frame(width: Constants.popoverSize.width, height: Constants.popoverSize.height)
     }
 }

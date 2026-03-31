@@ -164,20 +164,24 @@ final class AppEnvironment: ObservableObject {
     func debugSimulateLowBattery() {
         petState.isCharging = false
         petState.isLowBattery = true
-        petState.batteryPercentage = 12
+        petState.batteryPercentage = 18
         handle(.lowBatteryDetected)
     }
 
     func debugRecoverBattery() {
+        petState.isCharging = false
         petState.isLowBattery = false
         petState.batteryPercentage = 55
+        petState.rhythm.energy = max(petState.rhythm.energy, 60)
+        petState.rhythm.fatigue = min(petState.rhythm.fatigue, 40)
+        petState.rhythm.mood = max(petState.rhythm.mood, 55)
         handle(.batteryRecovered)
     }
 
     func debugForceCriticalFatigue() {
         petState.isCharging = false
         petState.isLowBattery = false
-        petState.batteryPercentage = 38
+        petState.batteryPercentage = 9
         petState.rhythm.energy = 10
         petState.rhythm.fatigue = 95
         petState.rhythm.mood = 28

@@ -70,6 +70,8 @@ enum PetStateReducer {
 
         case .batteryRecovered:
             nextState.isLowBattery = false
+            nextState.rhythm.energy = max(nextState.rhythm.energy, 48)
+            nextState.rhythm.mood += 4
             refreshDisplayMode(&nextState)
 
         case .sleepEntered:
@@ -111,7 +113,9 @@ enum PetStateReducer {
             return
         }
 
-        if state.rhythm.energy <= 8 || state.rhythm.fatigue >= 92 || (state.isLowBattery && !state.isCharging) {
+        let isCriticalBattery = (state.batteryPercentage ?? 100) <= Constants.criticalBatteryThreshold
+
+        if state.rhythm.energy <= 8 || state.rhythm.fatigue >= 92 || (isCriticalBattery && !state.isCharging) {
             state.displayMode = .critical
         } else if state.isCharging {
             state.displayMode = .charging
