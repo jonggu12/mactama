@@ -3,12 +3,18 @@ import Foundation
 
 enum Constants {
     static let petStateStorageKey = "mactama.pet-state"
+    static let behaviorHistoryStorageKey = "mactama.behavior-history"
     static let maxEventLogCount = 3
     static let powerPollInterval: TimeInterval = 5
     static let rhythmTickInterval: TimeInterval = 60
     static let eventDeduplicationWindow: TimeInterval = 2
-    static let wakeDisplayDuration: TimeInterval = 1
     static let lowBatteryThreshold = 20
     static let criticalBatteryThreshold = 10
+    static let tendencyAnalysisWindowDays = 3
+    static let tendencySignalRetentionDays = 14
+    static let behaviorHistoryRetentionDays = 14
+    static let tendencyHalfLifeDays = 3.0
+    static let tendencyThreshold = 15.0
+    static let tendencyGapThreshold = 5.0
     static let popoverSize = CGSize(width: 280, height: 460)
 }

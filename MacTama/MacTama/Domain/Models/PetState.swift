@@ -6,7 +6,6 @@ enum PetDisplayMode: String, Codable {
     case lowEnergy
     case critical
     case sleeping
-    case waking
 }
 
 struct PetRhythm: Codable {
@@ -60,25 +59,21 @@ extension PetState {
             return "😵"
         case .sleeping:
             return "😴"
-        case .waking:
-            return "☀️😺"
         }
     }
 
     var statusLabel: String {
         switch displayMode {
         case .awake:
-            return "깨어 있음"
+            return "깨어 있어요"
         case .charging:
-            return "충전 중"
+            return "충전 중이에요"
         case .lowEnergy:
-            return "기운 없음"
+            return "슬슬 지쳐가요"
         case .critical:
-            return "위태로움"
+            return "많이 지쳤어요"
         case .sleeping:
-            return "잠자는 중"
-        case .waking:
-            return "방금 깨어남"
+            return "잠들었어요"
         }
     }
 
@@ -95,8 +90,6 @@ extension PetState {
             return "지금은 회복이 필요한 상태예요"
         case .sleeping:
             return "맥북이 잠들어 있어요"
-        case .waking:
-            return isCharging ? "전원 연결 상태로 복귀 중" : "사용 상태로 복귀 중"
         case .awake:
             return isCharging ? "전원 연결됨" : "배터리 사용 중"
         }
@@ -105,32 +98,15 @@ extension PetState {
     var stateDescription: String {
         switch displayMode {
         case .charging:
-            if rhythm.fatigue >= 70 {
-                return "전원을 먹으며 천천히 기운을 회복하는 중이에요."
-            }
-            return "안정적으로 충전하면서 여유를 되찾고 있어요."
+            return "기운을 채우는 중이에요"
         case .lowEnergy:
-            if isLowBattery {
-                return "배터리가 낮아서 조심조심 버티는 중이에요."
-            }
-            return "기운이 조금 줄어서 조용히 버티는 중이에요."
+            return "충전해 주면 좋겠어요"
         case .critical:
-            if isLowBattery {
-                return "배터리가 많이 낮아 보여요. 곧 충전이 필요해요."
-            }
-            return "많이 지쳐 보여요. 조금 쉬면 괜찮아질 거예요."
+            return "지금은 쉬거나 충전이 필요해요"
         case .sleeping:
-            return "지금은 조용히 쉬는 시간이예요."
-        case .waking:
-            return "막 잠에서 깨어나는 중이에요."
+            return "맥북이 쉬는 동안 같이 잠들었어요"
         case .awake:
-            if rhythm.fatigue >= 65 {
-                return "조금 지친 표정이지만 아직 버틸 만해 보여요."
-            }
-            if rhythm.mood >= 75 {
-                return "기분 좋게 깨어 있는 상태예요."
-            }
-            return "조용히 대기하면서 맥북과 같이 시간을 보내고 있어요."
+            return "조용히 옆에 있어요"
         }
     }
 

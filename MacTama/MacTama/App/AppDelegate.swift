@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let environment = AppEnvironment(
             store: UserDefaultsPetStateStore(),
+            behaviorHistoryStore: UserDefaultsBehaviorHistoryStore(),
             powerMonitor: PowerMonitor(),
             sleepWakeMonitor: SleepWakeMonitor()
         )

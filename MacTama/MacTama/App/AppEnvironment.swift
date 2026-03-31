@@ -5,22 +5,26 @@ import SwiftUI
 @MainActor
 final class AppEnvironment: ObservableObject {
     @Published private(set) var petState: PetState
+    @Published private(set) var behaviorHistory: BehaviorHistory
 
     private let store: UserDefaultsPetStateStore
+    private let behaviorHistoryStore: UserDefaultsBehaviorHistoryStore
     private let powerMonitor: PowerMonitor
     private let sleepWakeMonitor: SleepWakeMonitor
-    private var wakeResetTask: Task<Void, Never>?
     private var rhythmTimer: Timer?
 
     init(
         store: UserDefaultsPetStateStore,
+        behaviorHistoryStore: UserDefaultsBehaviorHistoryStore,
         powerMonitor: PowerMonitor,
         sleepWakeMonitor: SleepWakeMonitor
     ) {
         self.store = store
+        self.behaviorHistoryStore = behaviorHistoryStore
         self.powerMonitor = powerMonitor
         self.sleepWakeMonitor = sleepWakeMonitor
         self.petState = store.load() ?? .initial
+        self.behaviorHistory = behaviorHistoryStore.load() ?? .initial()
     }
 
     func start() {
@@ -50,7 +54,6 @@ final class AppEnvironment: ObservableObject {
     }
 
     func stop() {
-        wakeResetTask?.cancel()
         rhythmTimer?.invalidate()
         rhythmTimer = nil
         powerMonitor.stop()
@@ -58,16 +61,34 @@ final class AppEnvironment: ObservableObject {
         persist()
     }
 
+    var debugBehaviorSummary: [String] {
+        let day = behaviorHistory.currentDay
+        return [
+            "오늘 버킷: \(day.id)",
+            "충전 \(day.chargingSessions)회 · 저배터리 \(day.lowBatteryHits)회",
+            "최근 일수 \(behaviorHistory.recentDays.count) · 신호 \(behaviorHistory.signalLog.count)개"
+        ]
+    }
+
     private func restore() {
+        let now = Date()
+
         if let storedState = store.load() {
-            let now = Date()
             let elapsed = now.timeIntervalSince(storedState.lastUpdatedAt)
             petState = PetStateReducer.applyElapsedTime(to: storedState, elapsed: elapsed)
             petState.lastUpdatedAt = now
         } else {
             petState = .initial
-            petState.lastUpdatedAt = Date()
+            petState.lastUpdatedAt = now
         }
+
+        if let storedHistory = behaviorHistoryStore.load() {
+            behaviorHistory = storedHistory
+        } else {
+            behaviorHistory = .initial(now: now)
+        }
+        behaviorHistory.rollCurrentDayIfNeeded(now: now)
+        behaviorHistory.pruneOldSignals(now: now)
         persist()
     }
 
@@ -84,17 +105,25 @@ final class AppEnvironment: ObservableObject {
     }
 
     private func handle(_ event: PetEvent) {
-        wakeResetTask?.cancel()
+        behaviorHistory.rollCurrentDayIfNeeded(now: Date())
+
+        switch event {
+        case .chargingStarted:
+            behaviorHistory.recordChargingSession(batteryPercentage: petState.batteryPercentage)
+        case .lowBatteryDetected:
+            behaviorHistory.recordLowBatteryHit(batteryPercentage: petState.batteryPercentage)
+        default:
+            break
+        }
+
         petState = PetStateReducer.reduce(state: petState, event: event)
         persist()
-
-        if event == .wakeDetected {
-            scheduleWakeReset()
-        }
     }
 
     private func persist() {
+        behaviorHistory.pruneOldSignals(now: Date())
         store.save(petState)
+        behaviorHistoryStore.save(behaviorHistory)
     }
 
     private func apply(snapshot: PowerSnapshot) {
@@ -143,21 +172,6 @@ final class AppEnvironment: ObservableObject {
         petState.lastUpdatedAt = now
         PetStateReducer.refreshDisplayMode(&petState)
         persist()
-    }
-
-    private func scheduleWakeReset() {
-        wakeResetTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Constants.wakeDisplayDuration))
-            guard !Task.isCancelled else { return }
-
-            await MainActor.run {
-                guard let self, self.petState.displayMode == .waking else { return }
-                self.petState.displayMode = self.petState.isCharging ? .charging : .awake
-                self.petState.lastUpdatedAt = Date()
-                PetStateReducer.refreshDisplayMode(&self.petState)
-                self.persist()
-            }
-        }
     }
 
 #if DEBUG

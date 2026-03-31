@@ -29,7 +29,7 @@ enum PetStateReducer {
 
         clampRhythm(&nextState)
 
-        if nextState.displayMode != .sleeping && nextState.displayMode != .waking {
+        if nextState.displayMode != .sleeping {
             refreshDisplayMode(&nextState)
         }
 
@@ -79,7 +79,7 @@ enum PetStateReducer {
 
         case .wakeDetected:
             nextState.rhythm.mood += 3
-            nextState.displayMode = .waking
+            refreshDisplayMode(&nextState)
         }
 
         clampRhythm(&nextState)
@@ -109,7 +109,7 @@ enum PetStateReducer {
     }
 
     static func refreshDisplayMode(_ state: inout PetState) {
-        guard state.displayMode != .sleeping && state.displayMode != .waking else {
+        guard state.displayMode != .sleeping else {
             return
         }
 

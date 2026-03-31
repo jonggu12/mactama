@@ -63,6 +63,20 @@ struct PopoverView: View {
                 Divider()
 
                 VStack(alignment: .leading, spacing: 8) {
+                    Text("BehaviorHistory")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(appEnvironment.debugBehaviorSummary, id: \.self) { line in
+                            Text(line)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Divider()
+
                     Text("디버그 테스트")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
